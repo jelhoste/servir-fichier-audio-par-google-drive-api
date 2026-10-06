@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lecteur multipistes</title>
+<meta name="theme-color" content="#121417">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Multipistes">
+<link rel="stylesheet" href="styles.css">
+<script src="themes.js"></script>
+<script src="version.js"></script>
+</head>
+<body>
+<header class="bar">
+  <h1>Lecteur multipistes</h1>
+  <button id="open-settings" type="button" aria-haspopup="dialog">⚙ Réglages</button>
+</header>
+<div id="update" class="banner" hidden role="status">
+  <span id="update-text">Une nouvelle version est disponible.</span>
+  <button id="update-go" type="button">Mettre à jour</button>
+</div>
+<main>
+  <details id="drive-panel" open>
+    <summary>Google Drive</summary>
+    <div class="row">
+      <input id="key" type="password" placeholder="Clé API" aria-label="Clé API Google" autocomplete="off">
+      <input id="root" type="text" placeholder="ID du dossier racine" aria-label="Identifiant du dossier racine" autocomplete="off">
+      <button id="list" type="button">Lister</button>
+    </div>
+    <div id="songs" class="list" aria-label="Morceaux Drive"></div>
+  </details>
+  <details id="local-panel">
+    <summary>Sur cet appareil (hors ligne)</summary>
+    <div id="local" class="list" aria-label="Morceaux disponibles hors ligne"></div>
+  </details>
+  <details>
+    <summary>Fichiers locaux (.opus)</summary>
+    <input type="file" id="f" accept=".opus,.ogg,audio/ogg" multiple aria-label="Choisir des fichiers Opus">
+  </details>
+
+  <div id="status" aria-live="polite"></div>
+  <div id="msg" role="alert"></div>
+  <p id="song-info"></p>
+  <p id="info"></p>
+  <section id="now" class="card" hidden aria-label="Position musicale">
+    <div class="now-row"><span id="barbeat"></span><span id="secname"></span></div>
+    <div class="chords">
+      <div><span class="lbl">Accord</span><strong id="chord-now" class="chord">–</strong></div>
+      <div><span class="lbl" id="next-lbl">Suivant</span><span id="chord-next" class="chord next"></span></div>
+    </div>
+  </section>
+  <div id="map" class="map" role="group" aria-label="Structure du morceau : touchez une section pour la boucler" hidden></div>
+  <details id="seclist" hidden><summary>Liste des sections</summary><div id="secs" class="secs"></div></details>
+  <details id="lyrics-panel" open hidden><summary>Paroles</summary><div id="lyrics" class="lyrics"></div></details>
+  <div id="tracks"></div>
+
+  <div id="transport">
+    <div class="row">
+      <button id="prev-bar" type="button" aria-label="Mesure précédente">⏮</button>
+      <button id="play" class="primary" type="button" disabled>▶ Lecture</button>
+      <button id="next-bar" type="button" aria-label="Mesure suivante">⏭</button>
+      <span id="time">0:00.0 / 0:00.0</span>
+    </div>
+    <input type="range" id="pos" min="0" max="0" value="0" step="1" disabled aria-label="Position dans le morceau">
+    <details>
+      <summary>Boucle et calage</summary>
+      <div class="row">
+        <label for="snap">Caler les sauts sur</label>
+        <select id="snap"><option value="beat">le temps</option><option value="bar">la mesure</option><option value="free">rien (libre)</option></select>
+      </div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="loop"> Boucle de</label>
+        <input type="number" id="a" value="0" step="0.5" min="0" aria-label="Début de boucle en secondes"> à
+        <input type="number" id="b" value="4" step="0.5" min="0" aria-label="Fin de boucle en secondes"> s
+      </div>
+      <div class="row">
+        <button id="set-a" type="button">A ici</button>
+        <button id="set-b" type="button">B ici</button>
+        <label class="chk"><input type="checkbox" id="merge"> Regrouper les sections identiques</label>
+      </div>
+    </details>
+  </div>
+</main>
+
+<dialog id="settings" aria-labelledby="settings-title">
+  <form method="dialog">
+    <h2 id="settings-title">Réglages</h2>
+    <label for="theme">Thème</label>
+    <select id="theme"></select>
+    <label for="chord-notation">Notation des accords</label>
+    <select id="chord-notation"><option value="pop">Pop (Dm, F, C)</option><option value="jazz">Jazz (D-, F, C)</option><option value="nashville">Nashville (2-, 4, 1)</option></select>
+    <label for="chord-level">Niveau de détail des accords</label>
+    <select id="chord-level"><option value="basic">Basique</option><option value="simple">Simple</option><option value="complex">Complexe</option></select>
+    <p>Version <strong id="ver"></strong></p>
+    <div class="row"><button id="check-update" type="button">Vérifier les mises à jour</button></div>
+    <p id="storage" role="status"></p>
+    <div class="row"><button id="clear-cache" type="button">Vider le cache audio</button></div>
+    <div class="row"><button value="close" class="primary">Fermer</button></div>
+  </form>
+</dialog>
+
+<script src="vendor/opus-decoder.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
