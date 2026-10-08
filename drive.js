@@ -5,6 +5,12 @@ const API = 'https://www.googleapis.com/drive/v3/files';
 const FOLDER = 'application/vnd.google-apps.folder';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const cleanId = id => String(id).replace(/[^\w-]/g, '');
+// Accepte un identifiant nu ou une adresse Drive complète (…/folders/ID?usp=sharing, …open?id=ID).
+export function parseFolderId(input) {
+  const t = String(input || '').trim();
+  const m = /\/folders\/([\w-]+)/.exec(t) || /[?&]id=([\w-]+)/.exec(t);
+  return m ? m[1] : t.replace(/[^\w-]/g, '');
+}
 
 function explain(status, reason) {
   if (reason === 'downloadQuotaExceeded') return 'Quota de téléchargement Drive dépassé pour ce fichier (blocage temporaire, environ 24 h).';
@@ -24,9 +30,9 @@ export function createDrive(apiKey) {
       try { res = await fetch(url); }
       catch (e) { throw new Error('Réseau indisponible : impossible de joindre Google Drive.'); }
       if (res.ok) return res;
-      let reason = '';
-      try { const j = await res.clone().json(); reason = (j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || ''; } catch (e) {}
-      last = new Error(explain(res.status, reason));
+      let reason = '', detail = '';
+      try { const j = await res.clone().json(); reason = (j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || ''; detail = (j.error && j.error.message) || ''; } catch (e) {}
+      last = new Error(explain(res.status, reason) + (detail ? ' [Google : ' + detail + ']' : ''));
       const retry = res.status === 429 || res.status >= 500 || reason === 'rateLimitExceeded' || reason === 'userRateLimitExceeded';
       if (!retry) throw last;
       await sleep(500 * 2 ** i + Math.random() * 250);          // backoff exponentiel
@@ -47,15 +53,15 @@ export function createDrive(apiKey) {
 
   return {
     // Sous-dossiers de la racine qui contiennent un fichier _termine.
+    // Une requête simple par dossier : avec une clé API, Drive refuse (403) les requêtes qui combinent plusieurs dossiers parents avec « or ».
     async listSongs(rootId) {
-      const folders = (await children(rootId)).filter(f => f.mimeType === FOLDER);
-      const done = new Set();
-      for (let i = 0; i < folders.length; i += 20) {
-        const chunk = folders.slice(i, i + 20);
-        const q = "name = '_termine' and trashed = false and (" + chunk.map(f => `'${cleanId(f.id)}' in parents`).join(' or ') + ')';
-        for (const m of await list(q)) (m.parents || []).forEach(p => done.add(p));
-      }
-      return folders.filter(f => done.has(f.id));
+      const folders = (await children(rootId)).filter(f => f.mimeType === FOLDER), errors = [];
+      const ready = await pool(folders, 4, async f => {
+        try { return (await children(f.id)).some(x => x.name === '_termine' && x.mimeType !== FOLDER); }
+        catch (e) { errors.push(e); return false; }              // un dossier illisible ne bloque pas les autres
+      });
+      if (folders.length && errors.length === folders.length) throw errors[0];
+      return folders.filter((f, i) => ready[i]);
     },
     // { files: {nom: meta} à la racine du morceau, stems: {nom: meta} dans stems/ }
     async openSong(songId) {

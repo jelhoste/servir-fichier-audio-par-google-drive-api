@@ -1,5 +1,5 @@
 import { parseOggOpus, decodeRange } from './ogg-opus.js';
-import { createDrive, createCache, loadSong } from './drive.js';
+import { createDrive, createCache, loadSong, parseFolderId } from './drive.js';
 import { buildMeta, snapBeat, snapBar, barBeatAt, prevBar, nextBar, chordAt, bpmAt, lyricAt, sectionsView, sectionAt, shortLabel } from './meta.js';
 
 const $ = id => document.getElementById(id);
@@ -255,10 +255,11 @@ async function refreshLocal() {
 $('list').onclick = async () => {
   try {
     msg(''); status('Lecture de la liste…');
-    store.set('drv_key', $('key').value.trim()); store.set('drv_root', $('root').value.trim());
+    const rootId = parseFolderId($('root').value); $('root').value = rootId;     // une adresse Drive collée est réduite à son identifiant
+    store.set('drv_key', $('key').value.trim()); store.set('drv_root', rootId);
     drive = makeDrive();
     if (!drive) throw new Error('Saisissez une clé API.');
-    const songs = await drive.listSongs($('root').value.trim());
+    const songs = await drive.listSongs(rootId);
     if (songs.length) songButtons($('songs'), songs); else $('songs').textContent = 'Aucun morceau terminé (dossier contenant _termine) trouvé.';
     status('');
   } catch (e) { status(''); msg(e.message); }
