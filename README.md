@@ -4,7 +4,7 @@ Application web installable : lecture synchronisée de pistes Opus depuis Google
 Avec les métadonnées du morceau : accords (pop, jazz, Nashville), paroles surlignées mot à mot, carte de structure, mesure et temps, calage des sauts sur la grille.
 
 ## Publier sur GitHub Pages
-1. Créez un dépôt GitHub (public) et déposez **tout le contenu de ce dossier** à la racine du dépôt.
+1. Créez un dépôt GitHub (public) et déposez **tout le contenu de ce dossier** à la racine du dépôt (le plus gros fichier fait 10 Mo, sous la limite de 25 Mo de l'envoi par navigateur).
 2. Dépôt > Settings > Pages > « Deploy from a branch » > branche `main`, dossier `/ (root)` > Save.
 3. L'adresse sera `https://VOTRE_NOM.github.io/NOM_DU_DEPOT/`.
 4. **Clé API Google** : dans « Restrictions relatives aux applications > Sites Web », ajoutez `https://VOTRE_NOM.github.io/*`
@@ -40,9 +40,23 @@ Le mode « Automatique » suit le système (sombre, clair, et contraste élevé 
 - **Clavier** : Espace lecture/pause, flèches gauche/droite mesure précédente/suivante.
 - Chaque fonctionnalité se masque seule si le fichier correspondant est absent ou illisible.
 
+## Convertisseur M4A -> Opus
+Panneau « Convertir des M4A en Opus (outil) » : choisissez **le ZIP du morceau** (ou directement ses `.m4a`), Convertir, puis téléchargez le ZIP de sortie à décompresser dans le dossier du morceau sur Drive.
+Le ZIP de sortie contient : les JSON et `paroles.lrc` repris tels quels, `original.opus`, `stems/*.opus`, `encodage.json`, et `_termine` si la case est cochée et que tous les contrôles sont bons (un ancien `_termine` du ZIP d'origine n'est pas repris).
+Le nom du morceau est lu dans `infos.json`. Un dossier racine unique dans le ZIP est ignoré ; les entrées dangereuses (`..`) sont refusées.
+- **Encodeur figé** : le profil `opus-128-v1` est affiché en clair (libopus 1.4, 128 kbit/s VBR, 48 kHz stéréo, trames de 20 ms, complexité 10, pre-skip 312) avec sa commande ffmpeg de bureau équivalente.
+- **Infos de l'encodeur** : le bouton « Télécharger les infos de l'encodeur » produit un JSON (profil, versions, empreintes SHA-256 des composants, consigne pour le faire évoluer).
+- **Traçabilité** : chaque fichier Opus porte les étiquettes `ENCODER`, `PROFILE`, `SETTINGS`, `DECODER`, `SOURCE`, `SOURCE_SHA256`. `encodage.json` ajoute les empreintes de sortie, les durées et les contrôles.
+- **Contrôles automatiques** : durées identiques, même pre-skip, même profil. Le lecteur signale aussi un mélange d'encodeurs dans un morceau.
+- **Reproductible** : mêmes entrées, mêmes composants = fichiers identiques octet pour octet. Un ffmpeg de bureau donne un audio équivalent mais pas des octets identiques : ne pas mélanger.
+- **Faire évoluer l'encodeur** : ne jamais modifier le profil existant. Créer un nouveau profil (nouvel `id`, ex. `opus-96-v2`) dans `convert-core.js`, mettre à jour `vendor/VERSIONS.json` si des composants changent, reconvertir le morceau entier.
+- Les composants WebAssembly (~10 Mo) ne sont pas dans l'installation de base : ils sont téléchargés à la première utilisation, puis conservés hors ligne dans un cache à part (`lecteur-tools-<TOOLS_VERSION>`). Changez `TOOLS_VERSION` dans `version.js` uniquement si les fichiers de `vendor/ffmpeg` ou `vendor/opus` changent.
+- `vendor/ffmpeg/ffmpeg-core.wasm.gz` est le noyau FFmpeg compressé (`gzip -9 -n`, 10 Mo au lieu de 32) : **GitHub refuse l'envoi par navigateur d'un fichier de plus de 25 Mo**. Le worker le décompresse et vérifie son SHA-256 avant de l'utiliser. Pour le régénérer : `gzip -9 -n -c ffmpeg-core.wasm > ffmpeg-core.wasm.gz`, puis mettre à jour l'empreinte dans `convert-worker.js` et `vendor/VERSIONS.json`.
+- Licences : voir `LICENSES.md` (FFmpeg est sous GPL-2.0 ou ultérieure).
+
 ## Dossiers Drive attendus
 `racine/<Artiste - Titre>/` contenant les `.json`, `paroles.lrc`, `original.opus`, un fichier `_termine`, et un sous-dossier `stems/` avec les `.opus` (même commande d'encodage pour tous).
 
 ## Fichiers
 `index.html`, `styles.css`, `themes.js`, `app.js` (interface + lecteur), `ogg-opus.js` (index Ogg Opus), `drive.js` (Drive + cache IndexedDB), `meta.js` (grille de temps, accords, paroles, sections),
-`vendor/opus-decoder.min.js` (décodeur Opus WASM, embarqué pour le hors ligne), `sw.js`, `version.js`, `manifest.webmanifest`, `icons/`.
+`vendor/opus-decoder.min.js` (décodeur Opus WASM, embarqué pour le hors ligne), `converter.js` + `converter-lib.js` + `convert-core.js` + `opus-pack.js` + `convert-worker.js` + `vendor/ffmpeg` + `vendor/opus` (convertisseur), `LICENSES.md`, `sw.js`, `version.js`, `manifest.webmanifest`, `icons/`.

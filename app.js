@@ -188,8 +188,11 @@ async function loadFromBytes(list) {                                // list : [{
   }
   const durs = new Set(tracks.map(t => t.p.durationSamples)), pre = new Set(tracks.map(t => t.p.preSkip));
   const ok = durs.size === 1 && pre.size === 1;
-  $('info').className = ok ? 'ok' : 'ko';
-  $('info').textContent = ok ? '✔ ' + tracks.length + ' pistes alignées (' + [...durs][0] + ' échantillons).' : '✘ Durées ou pre-skip différents : pistes non alignées.';
+  const encs = new Set(tracks.map(t => { const c = t.p.tags.comments; return c.PROFILE ? 'profil ' + c.PROFILE : (t.p.tags.vendor || 'encodeur inconnu'); }));
+  const mixed = encs.size > 1;                                      // pistes encodées avec des encodeurs ou réglages différents
+  $('info').className = ok && !mixed ? 'ok' : 'ko';
+  $('info').textContent = (ok ? '✔ ' + tracks.length + ' pistes alignées (' + [...durs][0] + ' échantillons).' : '✘ Durées ou pre-skip différents : pistes non alignées.')
+    + (mixed ? ' ⚠ Encodages différents : ' + [...encs].join(' ; ') + '.' : ' Encodage : ' + [...encs][0] + '.');
   $('tracks').innerHTML = tracks.map((t, i) => `<div class="track"><span class="n">${esc(label(t.name))}</span>
     <input type="range" id="v${i}" min="0" max="100" value="100" aria-label="Volume ${esc(label(t.name))}">
     <label class="chk"><input type="checkbox" id="m${i}"> Muet</label></div>`).join('');

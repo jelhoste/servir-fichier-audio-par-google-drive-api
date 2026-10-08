@@ -18,11 +18,26 @@ export function packetSamples(p) {
   return frame * n;
 }
 
+// Étiquettes OpusTags : fabricant de l'encodeur + commentaires CLE=valeur (clés en majuscules). Ne lève jamais d'erreur.
+function parseTags(d) {
+  const out = { vendor: '', comments: {} };
+  try {
+    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength), td = new TextDecoder();
+    let p = 8; const vl = dv.getUint32(p, true); p += 4; out.vendor = td.decode(d.subarray(p, p + vl)); p += vl;
+    const n = dv.getUint32(p, true); p += 4;
+    for (let i = 0; i < n && p + 4 <= d.length; i++) {
+      const l = dv.getUint32(p, true); p += 4; const s = td.decode(d.subarray(p, p + l)); p += l;
+      const k = s.indexOf('='); if (k > 0) out.comments[s.slice(0, k).toUpperCase()] = s.slice(k + 1);
+    }
+  } catch (e) {}
+  return out;
+}
+
 // bytes : Uint8Array du fichier .opus complet.
 export function parseOggOpus(bytes) {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const packets = [];          // paquets audio : { start, dur, data }
-  let head = null, partial = null, pos = 0, pageCount = 0, lastGranule = -1, pktIndex = 0, cursor = 0;
+  let head = null, tags = { vendor: '', comments: {} }, partial = null, pos = 0, pageCount = 0, lastGranule = -1, pktIndex = 0, cursor = 0;
 
   const pushPacket = (data) => {
     if (pktIndex === 0) {
@@ -35,6 +50,7 @@ export function parseOggOpus(bytes) {
       };
     } else if (pktIndex === 1) {
       if (!TAG(data, 0, 'OpusTags')) throw new Error('OpusTags introuvable');
+      tags = parseTags(data);
     } else {
       const dur = packetSamples(data);
       packets.push({ start: cursor, dur, data });
@@ -71,7 +87,7 @@ export function parseOggOpus(bytes) {
   }
   if (!head) throw new Error('Aucun en-tête Opus');
   return {
-    ...head, packets, pageCount,
+    ...head, tags, packets, pageCount,
     totalSamples: cursor,                                            // somme des durées de paquets (incl. pre-skip)
     durationSamples: lastGranule - head.preSkip,                     // durée réelle de la piste, à comparer entre pistes
   };

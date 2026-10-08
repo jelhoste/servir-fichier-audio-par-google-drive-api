@@ -62,3 +62,11 @@ dialog select{width:100%}
 [data-theme=contrast] .ly .w.sung{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 [data-theme=contrast] .map button{border-width:2px}
 .vh{position:absolute;left:-9999px}
+
+.muted{color:var(--muted)}
+code{background:var(--surface-2);padding:1px 6px;border-radius:6px;word-break:break-all}
+.kv{border-collapse:collapse;width:100%;margin:6px 0}
+.kv th{text-align:left;font-weight:600;padding:4px 12px 4px 0;vertical-align:top;color:var(--muted);white-space:nowrap}
+.kv td{padding:4px 0;word-break:break-word}
+#conv-list p{margin:6px 0}
+#conv-summary.ok{color:var(--ok)}#conv-summary.ko{color:var(--danger)}

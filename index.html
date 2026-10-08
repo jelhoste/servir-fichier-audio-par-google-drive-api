@@ -42,6 +42,28 @@
     <input type="file" id="f" accept=".opus,.ogg,audio/ogg" multiple aria-label="Choisir des fichiers Opus">
   </details>
 
+  <details id="converter">
+    <summary>Convertir des M4A en Opus (outil)</summary>
+    <p>L'encodeur est <strong>figé</strong> : toutes les pistes d'un morceau doivent être converties avec exactement les mêmes réglages pour rester alignées.</p>
+    <table id="profile-table" class="kv" aria-label="Encodeur et réglages"></table>
+    <div class="row"><button id="dl-encoder-info" type="button">Télécharger les infos de l'encodeur (JSON)</button></div>
+    <div class="row">
+      <label for="conv-song">Nom du morceau</label>
+      <input id="conv-song" type="text" placeholder="Artiste - Titre (nom du ZIP)" autocomplete="off">
+    </div>
+    <div class="row">
+      <input type="file" id="conv-files" accept=".zip,.m4a,application/zip,audio/mp4,audio/x-m4a" multiple aria-label="Choisir le ZIP du morceau ou ses fichiers M4A">
+      <button id="conv-run" class="primary" type="button" disabled>Convertir</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="conv-termine" checked> Ajouter le fichier <code>_termine</code> (le morceau apparaît dans la liste Drive du lecteur)</label>
+    <p class="muted"><strong>Vous pouvez choisir directement le ZIP du morceau</strong> (JSON, paroles et .m4a) : les JSON et les paroles sont repris tels quels dans le ZIP de sortie, les .m4a sont convertis. Sinon, choisissez les .m4a.</p>
+    <p class="muted">Le premier lancement télécharge environ 10 Mo (encodeur), puis il reste disponible hors ligne. <code>original.m4a</code> devient <code>original.opus</code> ; les autres pistes vont dans <code>stems/</code>.</p>
+    <p class="muted">Composants tiers embarqués : FFmpeg (licence GPL-2.0 ou ultérieure), libopus, opusscript. Voir <code>LICENSES.md</code>.</p>
+    <div id="conv-list" role="status"></div>
+    <p id="conv-summary"></p>
+    <div class="row"><button id="conv-zip" type="button" hidden>Télécharger le ZIP</button><button id="conv-report" type="button" hidden>Télécharger le rapport (JSON)</button></div>
+  </details>
+
   <div id="status" aria-live="polite"></div>
   <div id="msg" role="alert"></div>
   <p id="song-info"></p>
@@ -104,6 +126,9 @@
 </dialog>
 
 <script src="vendor/opus-decoder.min.js"></script>
+<script src="opus-pack.js"></script>
+<script src="convert-core.js"></script>
 <script type="module" src="app.js"></script>
+<script type="module" src="converter.js"></script>
 </body>
 </html>
