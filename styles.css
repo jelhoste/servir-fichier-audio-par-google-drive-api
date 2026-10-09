@@ -70,3 +70,10 @@ code{background:var(--surface-2);padding:1px 6px;border-radius:6px;word-break:br
 .kv td{padding:4px 0;word-break:break-word}
 #conv-list p{margin:6px 0}
 #conv-summary.ok{color:var(--ok)}#conv-summary.ko{color:var(--danger)}
+
+.vol{display:inline-flex;align-items:center;gap:6px;flex:1 1 150px;min-width:140px}
+.vol input{flex:1 1 80px;min-width:70px}
+.vol output{min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums}
+.map button[aria-pressed=true],.secs button[aria-pressed=true]{box-shadow:inset 0 0 0 3px var(--text)}
+[data-theme=contrast] .map button[aria-pressed=true],[data-theme=contrast] .secs button[aria-pressed=true]{box-shadow:inset 0 0 0 4px var(--text)}
+#secrow{margin:2px 0}

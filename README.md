@@ -35,8 +35,9 @@ Le mode « Automatique » suit le système (sombre, clair, et contraste élevé 
 ## Utilisation avec les métadonnées
 - **Accords** : accord courant et suivant (avec le nombre de temps avant le changement). Réglages : notation Pop / Jazz / Nashville et niveau Basique / Simple / Complexe.
 - **Paroles** : ligne active et mots chantés surlignés ; toucher une ligne saute au début de cette ligne. Source : `lyrics_new_format.json`, sinon `paroles.lrc`.
-- **Structure** : carte proportionnelle des sections ; toucher une section règle et active la boucle. « Regrouper les sections identiques » fusionne les tronçons consécutifs de même nom (Chorus, Chorus, Chorus devient Chorus 1) et numérote les répétitions.
+- **Structure** : carte proportionnelle des sections ; toucher une section la **sélectionne** (cadre épais) et s'y place ; retoucher la même carte la désélectionne. La case **« Boucler la section sélectionnée »** (sous le curseur, cochée par défaut) fait tourner en boucle uniquement cette section ; décochée, la lecture continue normalement. Cocher la case sans rien sélectionner prend la section en cours. La boucle manuelle A-B (dans « Boucle et calage ») reste disponible quand aucune section n'est sélectionnée. « Regrouper les sections identiques » fusionne les tronçons consécutifs de même nom (Chorus, Chorus, Chorus devient Chorus 1) et numérote les répétitions.
 - **Calage** (Boucle et calage) : les sauts du curseur se calent sur le temps le plus proche, sur la mesure, ou restent libres. « A ici » / « B ici » règlent la boucle à la position courante (calée de la même façon). ⏮ ⏭ : mesure précédente / suivante.
+- **Volume général** : curseur à côté des boutons de lecture (⏮ ▶ ⏭), mémorisé ; il agit sur toutes les pistes ensemble, en plus du volume de chaque piste (courbe quadratique pour un réglage plus fin aux faibles niveaux).
 - **Clavier** : Espace lecture/pause, flèches gauche/droite mesure précédente/suivante.
 - Chaque fonctionnalité se masque seule si le fichier correspondant est absent ou illisible.
 

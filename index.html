@@ -86,9 +86,15 @@
       <button id="prev-bar" type="button" aria-label="Mesure précédente">⏮</button>
       <button id="play" class="primary" type="button" disabled>▶ Lecture</button>
       <button id="next-bar" type="button" aria-label="Mesure suivante">⏭</button>
+      <label class="vol"><span class="vh">Volume général</span><span aria-hidden="true">🔊</span>
+        <input type="range" id="master" min="0" max="100" step="1" value="100" aria-label="Volume général"><output id="master-val" for="master">100 %</output></label>
       <span id="time">0:00.0 / 0:00.0</span>
     </div>
     <input type="range" id="pos" min="0" max="0" value="0" step="1" disabled aria-label="Position dans le morceau">
+    <div class="row" id="secrow" hidden>
+      <label class="chk"><input type="checkbox" id="secloop" checked> Boucler la section sélectionnée</label>
+      <span id="secloop-label" class="muted">Aucune section sélectionnée</span>
+    </div>
     <details>
       <summary>Boucle et calage</summary>
       <div class="row">

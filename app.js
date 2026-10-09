@@ -18,15 +18,27 @@ let ctx = null, tracks = [], gains = [], playing = false, gen = 0, pumping = fal
 let segs = [], live = new Set(), cursorSample = 0, cursorWhen = 0, posSample = 0, endWhen = 0, dragging = false;
 const dur = () => Math.min(...tracks.map(t => t.p.durationSamples));
 const loopA = () => Math.round($('a').value * SR), loopB = () => Math.round($('b').value * SR);
-const loopOn = () => $('loop').checked && loopB() > loopA() + SR * 0.1;     // une boucle B <= A est ignorée
+let selSection = -1;                                                // section sélectionnée dans la carte (indice dans `view`), -1 = aucune
+// Boucle effective : la section sélectionnée si « Boucler la section » est coché, sinon la boucle manuelle A-B. Une boucle B <= A est ignorée.
+function loopState() {
+  if ($('secloop').checked && selSection >= 0 && view[selSection]) {
+    const g = view[selSection];
+    return { on: true, a: Math.round(g.start * SR), b: Math.round(Math.min(g.end, dur() / SR) * SR) };
+  }
+  const x = loopA(), y = loopB();
+  return { on: $('loop').checked && y > x + SR * 0.1, a: x, b: y };
+}
 
-function buildGains() {                                             // un GainNode par piste, à refaire à chaque nouveau morceau
+let master = null;
+const masterValue = () => ($('master').value / 100) ** 2;           // courbe quadratique : réglage plus fin dans les faibles volumes
+function buildGains() {                                             // un GainNode par piste, à refaire à chaque nouveau morceau ; toutes passent par le volume général
   gains.forEach(g => g.disconnect());
-  gains = tracks.map((t, i) => { const g = ctx.createGain(); g.connect(ctx.destination); applyGain(i, g); return g; });
+  gains = tracks.map((t, i) => { const g = ctx.createGain(); g.connect(master); applyGain(i, g); return g; });
 }
 function ensureCtx() {
   if (ctx) return;
   ctx = new AudioContext({ sampleRate: SR });
+  master = ctx.createGain(); master.gain.value = masterValue(); master.connect(ctx.destination);
   if (ctx.sampleRate !== SR) msg('Attention : le contexte audio tourne à ' + ctx.sampleRate + ' Hz au lieu de 48000.');
   buildGains();
 }
@@ -57,14 +69,14 @@ async function pump() {
   pumping = true; const my = gen;
   try {
     while (playing && my === gen && cursorWhen < ctx.currentTime + AHEAD) {
-      const D = dur();
-      if (loopOn() && cursorSample >= loopB()) cursorSample = loopA();
+      const D = dur(), L = loopState();
+      if (L.on && cursorSample >= L.b) cursorSample = L.a;
       if (cursorSample >= D) {
-        if (!loopOn()) { endWhen = cursorWhen; break; }
-        cursorSample = loopA();
+        if (!L.on) { endWhen = cursorWhen; break; }
+        cursorSample = L.a;
       }
       let end = Math.min(cursorSample + BLOCK, D);
-      if (loopOn() && cursorSample < loopB()) end = Math.min(end, loopB());
+      if (L.on && cursorSample < L.b) end = Math.min(end, L.b);
       const len = end - cursorSample;
       const res = await Promise.all(tracks.map(t => decodeRange(t.p, t.dec, cursorSample, len)));
       if (my !== gen) return;
@@ -78,7 +90,7 @@ async function pump() {
       });
       segs.push({ when: cursorWhen, sample: cursorSample, len }); if (segs.length > 8) segs.shift();
       cursorWhen += len / SR; cursorSample += len;
-      if (loopOn() && cursorSample >= loopB()) cursorSample = loopA();
+      if (L.on && cursorSample >= L.b) cursorSample = L.a;
     }
   } catch (e) { msg('Erreur de lecture : ' + e.message); }
   finally { pumping = false; }
@@ -97,21 +109,35 @@ function seekTo(t, snap = true) {
   t = Math.max(0, Math.min(t, dur() / SR)); if (snap) t = snapTime(t);
   posSample = Math.round(t * SR); $('pos').value = posSample; if (playing) startFrom(posSample);
 }
-function loopSection(g) { $('a').value = g.start; $('b').value = g.end; $('loop').checked = true; seekTo(g.start, false); }
+// Toucher une carte sélectionne la section (et s'y place) ; si « Boucler la section » est coché, elle tourne en boucle. Retoucher la même carte la désélectionne.
+function selectSection(i) {
+  const was = selSection;
+  selSection = (i === was) ? -1 : i;
+  updateSelectionUI();
+  if (selSection >= 0) seekTo(view[selSection].start, false);
+  else if (playing) startFrom(Math.round(curPos()));               // désélection : la boucle s'arrête tout de suite
+}
+function updateSelectionUI() {
+  mapBtns.forEach((b, k) => b.setAttribute('aria-pressed', String(k === selSection))); listBtns.forEach((b, k) => b.setAttribute('aria-pressed', String(k === selSection)));
+  const g = view[selSection];
+  $('secloop-label').textContent = g ? 'Section sélectionnée : ' + g.name + ' (' + fmt(g.start) + '–' + fmt(g.end) + ')' + ($('secloop').checked ? ' · en boucle' : ' · boucle désactivée') : 'Aucune section sélectionnée';
+  $('secrow').hidden = !view.length;
+}
 
 function renderStructure() {
-  const map = $('map'), list = $('secs'); map.innerHTML = ''; list.innerHTML = ''; mapBtns = []; listBtns = []; ui.sec = -2;
-  if (!M || !M.sections) { view = []; map.hidden = true; $('seclist').hidden = true; return; }
+  const map = $('map'), list = $('secs'); map.innerHTML = ''; list.innerHTML = ''; mapBtns = []; listBtns = []; ui.sec = -2; selSection = -1;
+  if (!M || !M.sections) { view = []; map.hidden = true; $('seclist').hidden = true; updateSelectionUI(); return; }
   view = sectionsView(M.sections, $('merge').checked);
   map.hidden = false; $('seclist').hidden = false;
-  view.forEach(g => {
-    const btn = () => { const b = document.createElement('button'); b.type = 'button'; b.onclick = () => loopSection(g); return b; };
+  view.forEach((g, idx) => {
+    const btn = () => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', 'false'); b.onclick = () => selectSection(idx); return b; };
     const m = btn(); m.textContent = shortLabel(g.name); m.style.flexGrow = g.end - g.start;
     m.setAttribute('aria-label', g.name + ', de ' + fmt(g.start) + ' à ' + fmt(g.end) + ', boucler cette section'); m.title = g.name + ' ' + fmt(g.start) + '–' + fmt(g.end);
     map.appendChild(m); mapBtns.push(m);
     const l = btn(); l.textContent = g.name + ' ' + fmt(g.start); list.appendChild(l); listBtns.push(l);
   });
-  const off = document.createElement('button'); off.type = 'button'; off.textContent = 'Sans boucle'; off.onclick = () => { $('loop').checked = false; }; list.appendChild(off);
+  const off = document.createElement('button'); off.type = 'button'; off.textContent = 'Sans boucle'; off.onclick = () => { $('loop').checked = false; if (selSection >= 0) selectSection(selSection); else if (playing) startFrom(Math.round(curPos())); };
+  list.appendChild(off); updateSelectionUI();
 }
 function renderLyrics() {
   const box = $('lyrics'); box.innerHTML = ''; lyEls = []; ui.line = -2; ui.word = -2;
@@ -217,6 +243,15 @@ $('set-b').onclick = () => {
   const v = snapTime(curTime()); $('b').value = v.toFixed(2);
   msg(v <= +$('a').value ? 'Le point B doit être après le point A.' : '');
 };
+$('secloop').checked = store.get('secloop') !== '0';                 // par défaut : toucher une section la met en boucle (comportement précédent)
+$('secloop').onchange = () => {
+  store.set('secloop', $('secloop').checked ? '1' : '0');
+  if ($('secloop').checked && selSection < 0 && view.length) { const si = sectionAt(view, curTime()); if (si >= 0) selSection = si; }   // rien de sélectionné : on prend la section en cours
+  updateSelectionUI(); if (playing) startFrom(Math.round(curPos()));
+};
+$('master').value = store.get('master') || '100'; $('master-val').textContent = $('master').value + ' %';
+$('master').oninput = () => { $('master-val').textContent = $('master').value + ' %'; store.set('master', $('master').value); if (master) master.gain.value = masterValue(); };
+$('loop').onchange = () => { if (playing) startFrom(Math.round(curPos())); };
 $('snap').value = store.get('snap') || 'beat'; $('snap').onchange = () => store.set('snap', $('snap').value);
 $('merge').checked = store.get('merge') === '1'; $('merge').onchange = () => { store.set('merge', $('merge').checked ? '1' : '0'); renderStructure(); };
 $('f').onchange = async e => {
